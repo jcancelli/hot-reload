@@ -1,0 +1,104 @@
+{
+	"$schema": "https://json-schema.org/draft-07/schema",
+	"type": "object",
+	"properties": {
+		"serve": {
+			"type": "object",
+			"description": "Configuration for the http server",
+			"additionalProperties": false,
+			"properties": {
+				"port": {
+					"type": "number",
+					"exclusiveMinimum": 0,
+					"description": "The port of the http server"
+				},
+				"directory": {
+					"type": "string",
+					"description": "The directory containing the files served by the http server"
+				},
+				"clientScriptRoute": {
+					"pattern": "^/(?:[A-Za-z0-9\\-._~!$&'()*+,;=:@%]|(?:%[0-9A-Fa-f]{2}))(?:/(?:[A-Za-z0-9\\-._~!$&'()*+,;=:@%]|(?:%[0-9A-Fa-f]{2})))*?(?:\\?[A-Za-z0-9\\-._~!$&'()*+,;=:@/?%]|(?:%[0-9A-Fa-f]{2}))*?(?:#[A-Za-z0-9\\-._~!$&'()*+,;=:@/?%]|(?:%[0-9A-Fa-f]{2}))*?$",
+					"type": "string",
+					"description": "Route from which the script responsible for reloading the page will be served from"
+				},
+				"websocketRoute": {
+					"type": "string",
+					"pattern": "^/(?:[A-Za-z0-9\\-._~!$&'()*+,;=:@%]|(?:%[0-9A-Fa-f]{2}))(?:/(?:[A-Za-z0-9\\-._~!$&'()*+,;=:@%]|(?:%[0-9A-Fa-f]{2})))*?(?:\\?[A-Za-z0-9\\-._~!$&'()*+,;=:@/?%]|(?:%[0-9A-Fa-f]{2}))*?(?:#[A-Za-z0-9\\-._~!$&'()*+,;=:@/?%]|(?:%[0-9A-Fa-f]{2}))*?$",
+					"description": "The route from which the client script will be notified of reload events"
+				}
+			},
+			"required": [
+				"port",
+				"directory"
+			]
+		},
+		"watch": {
+			"type": "object",
+			"description": "The configuration for the filesystem watcher",
+			"additionalProperties": false,
+			"properties": {
+				"directories": {
+					"type": "array",
+					"description": "Directories that will be watched (recursively) for changes",
+					"minItems": 1,
+					"items": {
+						"type": "string"
+					},
+					"uniqueItems": true
+				},
+				"handlers": {
+					"type": "array",
+					"description": "The handlers for the file's changes",
+					"uniqueItems": true,
+					"items": {
+						"type": "object",
+						"properties": {
+							"pattern": {
+								"type": "string",
+								"description": "The patterne that a file path should match to trigger this handler"
+							},
+							"command": {
+								"type": "string",
+								"description": "The command that will be launched when this handler is triggered"
+							},
+							"args": {
+								"type": "array",
+								"description": "The arguments for the command of this handler",
+								"items": {
+									"type": "string"
+								}
+							},
+							"events": {
+								"type": "array",
+								"description": "The event types that will trigger this handler",
+								"uniqueItems": true,
+								"items": {
+									"enum": [
+										"CREATE",
+										"WRITE",
+										"REMOVE",
+										"RENAME",
+										"CHMOD",
+										"MOVE"
+									],
+									"type": "string"
+								}
+							}
+						},
+						"required": [
+							"pattern",
+							"events"
+						]
+					}
+				}
+			},
+			"required": [
+				"directories"
+			]
+		}
+	},
+	"required": [
+		"serve",
+		"watch"
+	]
+}
