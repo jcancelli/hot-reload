@@ -60,10 +60,13 @@ func NewServer(config ServeConfig) (self Server, err error) {
 
 	serveMux := http.NewServeMux()
 
-	serveMux.Handle("/", http.FileServer(http.Dir(config.Directory)))
-	serveMux.Handle("/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-
-	}))
+	serveMux.Handle("/", middleware.LogRequest(
+		middleware.NoCache(
+			http.FileServer(
+				http.Dir(config.Directory),
+			),
+		),
+	))
 
 	if config.ClientScriptRoute == "" {
 		self.clientScriptRoute = "/hot-reload.js"
