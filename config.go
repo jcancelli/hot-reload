@@ -6,6 +6,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"path"
 )
 
 type Config struct {
@@ -63,10 +64,15 @@ type CliArgs struct {
 }
 
 func ParseCliArgs() (args CliArgs, err error) {
+	workingDir, err := os.Getwd()
+	if err != nil {
+		return args, fmt.Errorf("failed to get working directory. %w", err)
+	}
+
 	flag.StringVar(
 		&args.ConfigPath,
 		"c",
-		"",
+		path.Join(workingDir, "hot-reload.json"),
 		"Path to the configuration file",
 	)
 	flag.BoolVar(
