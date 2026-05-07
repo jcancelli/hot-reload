@@ -1,0 +1,29 @@
+{
+	"$schema": "https://raw.githubusercontent.com/jcancelli/hot-reload/refs/heads/master/config-schema.json",
+	"serve": {
+		"port": 8080,
+		"directory": "",
+		"clientScriptRoute": "optional, defaults to /hot-reload.js",
+		"websocketRoute": "optional, defaults to /hot-reload-websocket"
+	},
+	"watch": {
+		"directories": [
+			""
+		],
+		"handlers": [
+			{
+				"pattern": "",
+				"command": "",
+				"args": [],
+				"events": [
+					"CREATE",
+					"WRITE",
+					"REMOVE",
+					"MOVE",
+					"RENAME",
+					"CHMOD"
+				]
+			}
+		]
+	}
+}

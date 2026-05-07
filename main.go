@@ -1,11 +1,25 @@
 package main
 
-import "log"
+import (
+	_ "embed"
+	"fmt"
+	"log"
+)
+
+var (
+	//go:embed skeleton-config.json
+	skeletonConfig string
+)
 
 func main() {
 	args, err := ParseCliArgs()
 	if err != nil {
 		log.Fatalf("failed to parse cli arguments\n", err.Error())
+	}
+
+	if args.DumpSkeletonConfig {
+		fmt.Print(skeletonConfig)
+		return
 	}
 
 	config, err := LoadConfig(args.ConfigPath)

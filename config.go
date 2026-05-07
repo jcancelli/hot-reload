@@ -58,7 +58,8 @@ func LoadConfig(path string) (Config, error) {
 }
 
 type CliArgs struct {
-	ConfigPath string
+	ConfigPath         string
+	DumpSkeletonConfig bool
 }
 
 func ParseCliArgs() (args CliArgs, err error) {
@@ -68,19 +69,14 @@ func ParseCliArgs() (args CliArgs, err error) {
 		"",
 		"Path to the configuration file",
 	)
+	flag.BoolVar(
+		&args.DumpSkeletonConfig,
+		"skeleton-config",
+		false,
+		"Print to standard out a skeleton for a hot-reload configuration file",
+	)
 
 	flag.Parse()
-
-	if args.ConfigPath == "" {
-		return args, errors.New("missing config file path")
-	}
-
-	if err = CheckValidFile(args.ConfigPath); err != nil {
-		return args, errors.Join(
-			err,
-			errors.New("invalid config file path"),
-		)
-	}
 
 	return args, nil
 }
