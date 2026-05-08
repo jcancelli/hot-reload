@@ -46,6 +46,7 @@ func LoadConfig(path string) (Config, error) {
 type CliArgs struct {
 	ConfigPath         string
 	DumpSkeletonConfig bool
+	LogHTTP            bool
 }
 
 func ParseCliArgs() (args CliArgs, err error) {
@@ -65,6 +66,12 @@ func ParseCliArgs() (args CliArgs, err error) {
 		"skeleton-config",
 		false,
 		"Print to standard out a skeleton for a hot-reload configuration file",
+	)
+	flag.BoolVar(
+		&args.LogHTTP,
+		"log-http",
+		false,
+		"Log to standard out incoming HTTP requests",
 	)
 
 	flag.Parse()
