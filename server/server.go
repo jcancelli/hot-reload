@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	_ "embed"
 	"fmt"
 	"log"
@@ -18,14 +19,16 @@ type Server struct {
 	watcher      *watcher.Watcher
 	server       http.Server
 	clientScript []byte
-	event        chan watcher.Event
+	fileEvent    chan watcher.Event
+	shutdown     chan bool
 }
 
 // Create a new server
-func NewServer(config Config) (self *Server, err error) {
+func NewServer(config Config, logHttp bool) (self *Server, err error) {
 	self = &Server{}
 
-	self.event = make(chan watcher.Event)
+	self.fileEvent = make(chan watcher.Event)
+	self.shutdown = make(chan bool)
 
 	config.FillInDefaults()
 	if err = config.Validate(); err != nil {
@@ -43,13 +46,16 @@ func NewServer(config Config) (self *Server, err error) {
 	}
 
 	multiplexer := http.NewServeMux()
-	multiplexer.Handle("/", middleware.LogRequest(
-		middleware.NoCache(
-			http.FileServer(
-				http.Dir(config.Directory),
-			),
+	rootHandler := middleware.NoCache(
+		http.FileServer(
+			http.Dir(config.Directory),
 		),
-	))
+	)
+	if logHttp {
+		rootHandler = middleware.LogRequest(rootHandler)
+	}
+	multiplexer.Handle("/", rootHandler)
+
 	multiplexer.HandleFunc(config.ClientScriptRoute, func(response http.ResponseWriter, request *http.Request) {
 		response.Header().Add("Content-Type", "text/javascript")
 		if _, err := response.Write(self.clientScript); err != nil {
@@ -57,7 +63,7 @@ func NewServer(config Config) (self *Server, err error) {
 		}
 	})
 
-	wsServer, err := NewWebsocketServer(self.event, config.PingIntervalMs)
+	wsServer, err := NewWebsocketServer(self.fileEvent, self.shutdown, config.PingIntervalMs)
 	if err != nil {
 		return nil, util.WrapError("failed to create websocket server", err)
 	}
@@ -72,23 +78,43 @@ func NewServer(config Config) (self *Server, err error) {
 }
 
 // Start the server
-func (self *Server) Start() error {
-	go func(event chan watcher.Event) {
+func (self *Server) Start() {
+	// Watcher
+	go func() {
 		for {
 			select {
 			case ev := <-self.watcher.Event:
-				event <- ev
+				self.fileEvent <- ev
+
 			case err := <-self.watcher.Error:
-				log.Fatalln(err)
+				log.Println(err)
+				self.watcher.Close()
+				return
+
 			case <-self.watcher.Closed:
-				break
+				return
 			}
 		}
-	}(self.event)
+	}()
 	go func() {
 		if err := self.watcher.Start(time.Second); err != nil {
-			log.Fatalln(err)
+			log.Println(err)
 		}
 	}()
-	return self.server.ListenAndServe()
+
+	// HTTP server
+	go func() {
+		log.Printf("listening on %s\n", self.server.Addr)
+		if err := self.server.ListenAndServe(); err != nil {
+			if err != http.ErrServerClosed {
+				log.Println(err)
+			}
+		}
+	}()
+}
+
+func (self *Server) Stop() {
+	self.watcher.Close()
+	close(self.shutdown)
+	self.server.Shutdown(context.Background())
 }

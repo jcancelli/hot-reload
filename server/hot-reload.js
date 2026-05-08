@@ -1,32 +1,35 @@
 (() => {
 	const url = new URL("{{.WebSocketRoute}}", "ws://localhost:{{.Port}}")
-	const ws = new WebSocket(url)
 
-	let lastPingTimeout = null
-	function ping() {
-		ws.send(JSON.stringify({
-			kind: "ping",
-		}))
-		lastPingTimeout = setTimeout(() => {
-			alert("Dev server disconnected")
-		}, 5_000)
-	}
+	/** @type {WebSocket} */
+	let ws
 
-	setInterval(ping, 10_000)
+	function connect() {
+		ws = new WebSocket(url)
 
-	ws.onmessage = (event) => {
-		const data = event.data
-		switch (data.kind) {
-			case "reload":
+		ws.onmessage = (event) => {
+			if (event.data === "RELOAD") {
 				window.location.reload()
-				break
-			case "pong":
-				clearTimeout(lastPingTimeout)
-				lastPingTimeout = null
-				break
-			default:
-				console.log(event)
-				break
+			} else {
+				alert(`Unexpected message ${event}`)
+			}
+		}
+
+		ws.onopen = () => {
+			console.log("[hot-reload] connected")
+		}
+
+		ws.onclose = () => {
+			console.log("[hot-reload] disconnected")
+		}
+
+		ws.onerror = (event) => {
+			console.log(`[hot-reload] websocket error: ${event.toString()}`)
+			ws.close()
+			console.log(`[hot-reload] trying to reconnect`)
+			connect()
 		}
 	}
+
+	connect()
 })()

@@ -4,6 +4,8 @@ import (
 	_ "embed"
 	"fmt"
 	"log"
+	"os"
+	"os/signal"
 
 	"github.com/jcancelli/hot-reload/server"
 	"github.com/jcancelli/hot-reload/util"
@@ -34,26 +36,31 @@ func main() {
 		)
 	}
 
-	watcher, err := NewWatcher(config.Watch)
-	if err != nil {
-		log.Fatalln(
-			util.WrapError("failed to initialize watcher", err),
-		)
-	}
+	interrupt := make(chan os.Signal)
+	signal.Notify(interrupt, os.Interrupt)
 
-	server, err := server.NewServer(config.Server)
+	//watcher, err := NewWatcher(config.Watch)
+	//if err != nil {
+	//	log.Fatalln(
+	//		util.WrapError("failed to initialize watcher", err),
+	//	)
+	//}
+
+	server, err := server.NewServer(config.Server, args.LogHTTP)
 	if err != nil {
 		log.Fatalln(
 			util.WrapError("failed to initialize server", err),
 		)
 	}
 
-	go func() {
-		if err := watcher.Start(); err != nil {
-			log.Fatalln(err)
-		}
-	}()
-	if err = server.Start(); err != nil {
-		log.Fatalln(err.Error())
-	}
+	//go func() {
+	//	if err := watcher.Start(); err != nil {
+	//		log.Fatalln(err)
+	//	}
+	//}()
+	server.Start()
+
+	<-interrupt
+	log.Println("shutting down")
+	server.Stop()
 }

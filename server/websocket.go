@@ -20,14 +20,20 @@ var (
 type WebsocketServer struct {
 	http.Handler
 
-	fileChangeEvent <-chan watcher.Event
-	pingInterval    time.Duration
+	fileEvent    <-chan watcher.Event
+	shutdown     <-chan bool
+	pingInterval time.Duration
 }
 
-func NewWebsocketServer(fileChangeEvent <-chan watcher.Event, pingIntervalMs uint) (self *WebsocketServer, err error) {
+func NewWebsocketServer(
+	fileEvent <-chan watcher.Event,
+	shutdown <-chan bool,
+	pingIntervalMs uint,
+) (self *WebsocketServer, err error) {
 	self = &WebsocketServer{
-		fileChangeEvent: fileChangeEvent,
-		pingInterval:    time.Millisecond * time.Duration(pingIntervalMs),
+		fileEvent:    fileEvent,
+		shutdown:     shutdown,
+		pingInterval: time.Millisecond * time.Duration(pingIntervalMs),
 	}
 	return
 }
@@ -35,79 +41,65 @@ func NewWebsocketServer(fileChangeEvent <-chan watcher.Event, pingIntervalMs uin
 func (self *WebsocketServer) ServeHTTP(response http.ResponseWriter, request *http.Request) {
 	ws, err := wsUpgrader.Upgrade(response, request, nil)
 	if err != nil {
-		log.Fatalln(
-			util.WrapError("failed to upgrade websocket connection", err),
+		log.Println(
+			util.WrapError("[WS] failed to upgrade connection", err),
 		)
+		return
 	}
-	log.Println("hot-reload client connected")
-	go self.writer(ws)
-	self.reader(ws)
-}
-
-func (self *WebsocketServer) writer(ws *websocket.Conn) {
 	defer ws.Close()
+	log.Println("[WS] client connected")
 
-	pingTicker := time.NewTicker(self.pingInterval)
-	defer pingTicker.Stop()
+	ws.SetReadDeadline(time.Now().Add(self.pingInterval))
+	ws.SetPongHandler(func(string) error {
+		ws.SetReadDeadline(time.Now().Add(self.pingInterval))
+		return nil
+	})
 
-	for {
-		var err error
-
-		select {
-		case <-self.fileChangeEvent:
-			err = ws.WriteJSON(NewReloadMessage())
-
-		case <-pingTicker.C:
-			err = ws.WriteJSON(NewPingMessage())
+	// Reader
+	go func() {
+		for {
+			_, _, err := ws.ReadMessage()
+			if err != nil {
+				log.Println("[WS] client disconnected")
+				return
+			}
 		}
+	}()
 
-		if err != nil {
-			if websocket.IsCloseError(err) {
-				log.Println("hot-reload client disconnected")
+	ping := time.NewTicker(self.pingInterval)
+	defer ping.Stop()
+
+	// Writer
+	for {
+		select {
+		case <-ping.C:
+			err := ws.WriteControl(websocket.PingMessage, nil, time.Now().Add(5*time.Second))
+			if err != nil {
 				break
 			}
-			log.Println(
-				util.WrapError("error while sending message to client", err),
-			)
+
+		case <-self.shutdown:
+			if err := ws.WriteMessage(
+				websocket.CloseMessage,
+				websocket.FormatCloseMessage(
+					websocket.CloseNormalClosure,
+					"",
+				),
+			); err != nil {
+				log.Println(
+					util.WrapError("[WS] failed to close connection", err),
+				)
+				return
+			}
+
+			<-time.After(2 * time.Second)
+			return
+
+		case <-self.fileEvent:
+			if err := ws.WriteMessage(websocket.TextMessage, []byte("RELOAD")); err != nil {
+				log.Println("[WS] failed to signal reload")
+				return
+			}
 		}
-	}
-}
-
-func (self *WebsocketServer) reader(ws *websocket.Conn) {
-	// Nothing for now
-}
-
-type MessageKind string
-
-const (
-	PingMsgKind   MessageKind = "ping"
-	ReloadMsgKind MessageKind = "reload"
-)
-
-type Message struct {
-	Kind MessageKind `json:"kind"`
-}
-
-type PingMessage struct {
-	Message
-}
-
-func NewPingMessage() PingMessage {
-	return PingMessage{
-		Message: Message{
-			Kind: PingMsgKind,
-		},
-	}
-}
-
-type ReloadMessage struct {
-	Message
-}
-
-func NewReloadMessage() ReloadMessage {
-	return ReloadMessage{
-		Message: Message{
-			Kind: ReloadMsgKind,
-		},
 	}
 }
