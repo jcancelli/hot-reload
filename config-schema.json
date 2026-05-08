@@ -2,7 +2,7 @@
 	"$schema": "https://json-schema.org/draft-07/schema",
 	"type": "object",
 	"properties": {
-		"serve": {
+		"server": {
 			"type": "object",
 			"description": "Configuration for the http server",
 			"additionalProperties": false,
@@ -25,12 +25,13 @@
 					"type": "string",
 					"pattern": "^/(?:[A-Za-z0-9\\-._~!$&'()*+,;=:@%]|(?:%[0-9A-Fa-f]{2}))(?:/(?:[A-Za-z0-9\\-._~!$&'()*+,;=:@%]|(?:%[0-9A-Fa-f]{2})))*?(?:\\?[A-Za-z0-9\\-._~!$&'()*+,;=:@/?%]|(?:%[0-9A-Fa-f]{2}))*?(?:#[A-Za-z0-9\\-._~!$&'()*+,;=:@/?%]|(?:%[0-9A-Fa-f]{2}))*?$",
 					"description": "The route from which the client script will be notified of reload events"
+				},
+				"pingIntervalMs": {
+					"type": "number",
+					"exclusiveMinimum": 0,
+					"description": "The interval between ping messages sent by the server to the client"
 				}
-			},
-			"required": [
-				"port",
-				"directory"
-			]
+			}
 		},
 		"watch": {
 			"type": "object",
