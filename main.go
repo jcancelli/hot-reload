@@ -4,6 +4,9 @@ import (
 	_ "embed"
 	"fmt"
 	"log"
+
+	"github.com/jcancelli/hot-reload/server"
+	"github.com/jcancelli/hot-reload/util"
 )
 
 var (
@@ -14,7 +17,9 @@ var (
 func main() {
 	args, err := ParseCliArgs()
 	if err != nil {
-		log.Fatalf("failed to parse cli arguments\n", err.Error())
+		log.Fatalln(
+			util.WrapError("failed to parse cli arguments", err),
+		)
 	}
 
 	if args.DumpSkeletonConfig {
@@ -24,20 +29,25 @@ func main() {
 
 	config, err := LoadConfig(args.ConfigPath)
 	if err != nil {
-		log.Fatalf("failed to load config file: %s\n", err.Error())
+		log.Fatalln(
+			util.WrapError("failed to load configuration", err),
+		)
 	}
 
 	watcher, err := NewWatcher(config.Watch)
 	if err != nil {
-		log.Fatalf("failed to init watcher: %s\n", err.Error())
+		log.Fatalln(
+			util.WrapError("failed to initialize watcher", err),
+		)
 	}
 
-	server, err := NewServer(config.Serve)
+	server, err := server.NewServer(config.Server)
 	if err != nil {
-		log.Fatalf("failed to init server: %s\n", err.Error())
+		log.Fatalln(
+			util.WrapError("failed to initialize server", err),
+		)
 	}
 
-	log.Printf("listening on port %d\n", config.Serve.Port)
 	go func() {
 		if err := watcher.Start(); err != nil {
 			log.Fatalln(err)

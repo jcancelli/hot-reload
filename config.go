@@ -2,23 +2,17 @@ package main
 
 import (
 	"encoding/json"
-	"errors"
 	"flag"
 	"fmt"
 	"os"
 	"path"
+
+	"github.com/jcancelli/hot-reload/server"
 )
 
 type Config struct {
-	Serve ServeConfig `json:"serve"`
-	Watch WatchConfig `json:"watch"`
-}
-
-type ServeConfig struct {
-	Port              uint   `json:"port"`
-	Directory         string `json:"directory"`
-	ClientScriptRoute string `json:"clientScriptRoute"`
-	WebsocketRoute    string `json:"websocketRoute"`
+	Server server.Config `json:"server"`
+	Watch  WatchConfig   `json:"watcher"`
 }
 
 type WatchConfig struct {
@@ -44,15 +38,6 @@ func LoadConfig(path string) (Config, error) {
 	err = json.Unmarshal(data, &config)
 	if err != nil {
 		return config, err
-	}
-
-	if err = CheckValidDirectory(config.Serve.Directory); err != nil {
-		return config, errors.Join(err, errors.New("invalid serve directory"))
-	}
-	for _, directory := range config.Watch.Directories {
-		if err = CheckValidDirectory(directory); err != nil {
-			return config, errors.Join(err, errors.New("invalid watch directory"))
-		}
 	}
 
 	return config, nil
@@ -85,26 +70,4 @@ func ParseCliArgs() (args CliArgs, err error) {
 	flag.Parse()
 
 	return args, nil
-}
-
-func CheckValidDirectory(path string) error {
-	info, err := os.Stat(path)
-	if err != nil {
-		return err
-	}
-	if !info.IsDir() {
-		return fmt.Errorf("%v is not a directory", path)
-	}
-	return nil
-}
-
-func CheckValidFile(path string) error {
-	info, err := os.Stat(path)
-	if err != nil {
-		return err
-	}
-	if info.IsDir() {
-		return fmt.Errorf("%v is a directory", path)
-	}
-	return nil
 }
