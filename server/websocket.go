@@ -23,6 +23,7 @@ type WebsocketServer struct {
 	fileEvent    <-chan watcher.Event
 	shutdown     <-chan bool
 	pingInterval time.Duration
+	pongWait     time.Duration
 }
 
 func NewWebsocketServer(
@@ -34,6 +35,7 @@ func NewWebsocketServer(
 		fileEvent:    fileEvent,
 		shutdown:     shutdown,
 		pingInterval: time.Millisecond * time.Duration(pingIntervalMs),
+		pongWait:     time.Millisecond * time.Duration(pingIntervalMs*5),
 	}
 	return
 }
@@ -49,9 +51,9 @@ func (self *WebsocketServer) ServeHTTP(response http.ResponseWriter, request *ht
 	defer ws.Close()
 	log.Println("[WS] client connected")
 
-	ws.SetReadDeadline(time.Now().Add(self.pingInterval))
+	ws.SetReadDeadline(time.Now().Add(self.pongWait))
 	ws.SetPongHandler(func(string) error {
-		ws.SetReadDeadline(time.Now().Add(self.pingInterval))
+		ws.SetReadDeadline(time.Now().Add(self.pongWait))
 		return nil
 	})
 
@@ -61,6 +63,9 @@ func (self *WebsocketServer) ServeHTTP(response http.ResponseWriter, request *ht
 			_, _, err := ws.ReadMessage()
 			if err != nil {
 				log.Println("[WS] client disconnected")
+				if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
+					log.Printf("[WS] unexpected error: %v", err)
+				}
 				return
 			}
 		}
@@ -75,6 +80,9 @@ func (self *WebsocketServer) ServeHTTP(response http.ResponseWriter, request *ht
 		case <-ping.C:
 			err := ws.WriteControl(websocket.PingMessage, nil, time.Now().Add(5*time.Second))
 			if err != nil {
+				if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
+					log.Printf("[WS] unexpected close error: %v", err)
+				}
 				break
 			}
 
