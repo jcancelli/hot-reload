@@ -17,13 +17,11 @@
 					"description": "The directory containing the files served by the http server"
 				},
 				"clientScriptRoute": {
-					"pattern": "^/(?:[A-Za-z0-9\\-._~!$&'()*+,;=:@%]|(?:%[0-9A-Fa-f]{2}))(?:/(?:[A-Za-z0-9\\-._~!$&'()*+,;=:@%]|(?:%[0-9A-Fa-f]{2})))*?(?:\\?[A-Za-z0-9\\-._~!$&'()*+,;=:@/?%]|(?:%[0-9A-Fa-f]{2}))*?(?:#[A-Za-z0-9\\-._~!$&'()*+,;=:@/?%]|(?:%[0-9A-Fa-f]{2}))*?$",
 					"type": "string",
 					"description": "Route from which the script responsible for reloading the page will be served from"
 				},
 				"websocketRoute": {
 					"type": "string",
-					"pattern": "^/(?:[A-Za-z0-9\\-._~!$&'()*+,;=:@%]|(?:%[0-9A-Fa-f]{2}))(?:/(?:[A-Za-z0-9\\-._~!$&'()*+,;=:@%]|(?:%[0-9A-Fa-f]{2})))*?(?:\\?[A-Za-z0-9\\-._~!$&'()*+,;=:@/?%]|(?:%[0-9A-Fa-f]{2}))*?(?:#[A-Za-z0-9\\-._~!$&'()*+,;=:@/?%]|(?:%[0-9A-Fa-f]{2}))*?$",
 					"description": "The route from which the client script will be notified of reload events"
 				},
 				"pingIntervalMs": {
@@ -33,7 +31,7 @@
 				}
 			}
 		},
-		"watch": {
+		"watcher": {
 			"type": "object",
 			"description": "The configuration for the filesystem watcher",
 			"additionalProperties": false,
@@ -41,11 +39,15 @@
 				"directories": {
 					"type": "array",
 					"description": "Directories that will be watched (recursively) for changes",
-					"minItems": 1,
 					"items": {
 						"type": "string"
 					},
 					"uniqueItems": true
+				},
+				"pollIntervalMs": {
+					"type": "number",
+					"exclusiveMinimum": 0,
+					"description": "The time in milliseconds that elapses between each time the fs events are polled (and the handlers triggered)"
 				},
 				"handlers": {
 					"type": "array",
@@ -54,52 +56,63 @@
 					"items": {
 						"type": "object",
 						"properties": {
-							"pattern": {
+							"name": {
 								"type": "string",
-								"description": "The patterne that a file path should match to trigger this handler"
+								"description": "The name of this handler",
+								"default": ""
 							},
 							"command": {
+								"type": "array",
+								"items": {
+									"type": "string"
+								},
+								"description": "The command that will be executed when this handler is triggered. Supports golang template variable expansion for the following variables:\n- {{.FileBase}} The basename of the file that triggered the handler\n- {{.FileAbs}} The absolute path of the file that triggered the handler\n- {{.FileDir}} The absolute directory of the file that triggered the handler",
+								"default": []
+							},
+							"extensions": {
+								"type": "array",
+								"items": {
+									"type": "string",
+									"uniqueItems": true
+								},
+								"description": "A list of file extensions that will trigger this handler",
+								"default": []
+							},
+							"files": {
+								"type": "array",
+								"items": {
+									"type": "string",
+									"uniqueItems": true
+								},
+								"description": "A list of files (absolute path) that will trigger this handler",
+								"default": []
+							},
+							"regex": {
 								"type": "string",
-								"description": "The command that will be launched when this handler is triggered"
+								"description": "All filenames that will match this regex will trigger this handler",
+								"default": ""
 							},
-							"args": {
-								"type": "array",
-								"description": "The arguments for the command of this handler",
-								"items": {
-									"type": "string"
-								}
+							"printStdOut": {
+								"type": "boolean",
+								"description": "Wether stdout of the command of this handler should be echoed to stdout",
+								"default": false
 							},
-							"events": {
-								"type": "array",
-								"description": "The event types that will trigger this handler",
-								"uniqueItems": true,
-								"items": {
-									"enum": [
-										"CREATE",
-										"WRITE",
-										"REMOVE",
-										"RENAME",
-										"CHMOD",
-										"MOVE"
-									],
-									"type": "string"
-								}
+							"printStdErr": {
+								"type": "boolean",
+								"description": "Wether stderr of the command of this handler should be echoed to stderr",
+								"default": false
 							}
-						},
-						"required": [
-							"pattern",
-							"events"
-						]
+						}
 					}
 				}
 			},
 			"required": [
-				"directories"
+				"command"
 			]
 		}
 	},
 	"required": [
-		"serve",
-		"watch"
+		"server",
+		"watcher"
 	]
 }
