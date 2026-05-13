@@ -16,6 +16,7 @@
 
 		ws.onmessage = (event) => {
 			if (event.data === "RELOAD") {
+				ws.close()
 				window.location.reload()
 			} else {
 				alert(`Unexpected message ${event}`)

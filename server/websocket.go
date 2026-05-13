@@ -48,7 +48,11 @@ func (self *WebsocketServer) ServeHTTP(response http.ResponseWriter, request *ht
 		)
 		return
 	}
-	defer ws.Close()
+	defer func() {
+		ws.Close()
+		log.Println("[WS] client disconnected")
+	}()
+
 	log.Println("[WS] client connected")
 
 	ws.SetReadDeadline(time.Now().Add(self.pongWait))
@@ -62,8 +66,11 @@ func (self *WebsocketServer) ServeHTTP(response http.ResponseWriter, request *ht
 		for {
 			_, _, err := ws.ReadMessage()
 			if err != nil {
-				log.Println("[WS] client disconnected")
-				if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
+				if err != websocket.ErrCloseSent && websocket.IsUnexpectedCloseError(
+					err,
+					websocket.CloseNormalClosure,
+					websocket.CloseGoingAway,
+				) {
 					log.Printf("[WS] unexpected error: %v", err)
 				}
 				return
@@ -80,8 +87,12 @@ func (self *WebsocketServer) ServeHTTP(response http.ResponseWriter, request *ht
 		case <-ping.C:
 			err := ws.WriteControl(websocket.PingMessage, nil, time.Now().Add(5*time.Second))
 			if err != nil {
-				if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
-					log.Printf("[WS] unexpected close error: %v", err)
+				if err != websocket.ErrCloseSent && websocket.IsUnexpectedCloseError(
+					err,
+					websocket.CloseNormalClosure,
+					websocket.CloseGoingAway,
+				) {
+					log.Printf("[WS] unexpected error: %v", err)
 				}
 				break
 			}
@@ -94,19 +105,27 @@ func (self *WebsocketServer) ServeHTTP(response http.ResponseWriter, request *ht
 					"",
 				),
 			); err != nil {
-				log.Println(
-					util.WrapError("[WS] failed to close connection", err),
-				)
-				return
+				if websocket.IsUnexpectedCloseError(
+					err,
+					websocket.CloseNormalClosure,
+					websocket.CloseGoingAway,
+				) {
+					log.Printf("[WS] unexpected error: %v", err)
+				}
 			}
-
-			<-time.After(2 * time.Second)
-			return
+			break
 
 		case <-self.fileEvent:
+			log.Println("[WS] reload signaled")
 			if err := ws.WriteMessage(websocket.TextMessage, []byte("RELOAD")); err != nil {
-				log.Println("[WS] failed to signal reload")
-				return
+				if err != websocket.ErrCloseSent && websocket.IsUnexpectedCloseError(
+					err,
+					websocket.CloseNormalClosure,
+					websocket.CloseGoingAway,
+				) {
+					log.Printf("[WS] unexpected error: %v", err)
+				}
+				break
 			}
 		}
 	}

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"path/filepath"
 	"time"
 
 	"github.com/jcancelli/hot-reload/server/middleware"
@@ -16,6 +17,7 @@ import (
 // A server is responsible for watching and serving the files inside a directry and notifying the
 // client for changes to such files
 type Server struct {
+	config       Config
 	watcher      *watcher.Watcher
 	server       http.Server
 	clientScript []byte
@@ -26,6 +28,8 @@ type Server struct {
 // Create a new server
 func NewServer(config Config, logHttp bool) (self *Server, err error) {
 	self = &Server{}
+
+	self.config = config
 
 	self.fileEvent = make(chan watcher.Event)
 	self.shutdown = make(chan bool)
@@ -104,7 +108,10 @@ func (self *Server) Start() {
 
 	// HTTP server
 	go func() {
-		log.Printf("listening on %s\n", self.server.Addr)
+		log.Printf("listening on port %d\n", self.config.Port)
+		serveDir, _ := filepath.Abs(self.config.Directory)
+		log.Printf("serving %s", serveDir)
+
 		if err := self.server.ListenAndServe(); err != nil {
 			if err != http.ErrServerClosed {
 				log.Println(err)
