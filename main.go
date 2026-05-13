@@ -9,6 +9,7 @@ import (
 
 	"github.com/jcancelli/hot-reload/server"
 	"github.com/jcancelli/hot-reload/util"
+	watch "github.com/jcancelli/hot-reload/watcher"
 )
 
 var (
@@ -35,16 +36,17 @@ func main() {
 			util.WrapError("failed to load configuration", err),
 		)
 	}
+	config.FillInDefaults()
 
 	interrupt := make(chan os.Signal)
 	signal.Notify(interrupt, os.Interrupt)
 
-	//watcher, err := NewWatcher(config.Watch)
-	//if err != nil {
-	//	log.Fatalln(
-	//		util.WrapError("failed to initialize watcher", err),
-	//	)
-	//}
+	watcher, err := watch.NewWatcher(config.Watcher)
+	if err != nil {
+		log.Fatalln(
+			util.WrapError("failed to initialize watcher", err),
+		)
+	}
 
 	server, err := server.NewServer(config.Server, args.LogHTTP)
 	if err != nil {
@@ -53,14 +55,11 @@ func main() {
 		)
 	}
 
-	//go func() {
-	//	if err := watcher.Start(); err != nil {
-	//		log.Fatalln(err)
-	//	}
-	//}()
+	watcher.Start()
 	server.Start()
 
 	<-interrupt
 	log.Println("shutting down")
 	server.Stop()
+	watcher.Stop()
 }

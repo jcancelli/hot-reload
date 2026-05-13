@@ -8,23 +8,17 @@ import (
 	"path"
 
 	"github.com/jcancelli/hot-reload/server"
+	"github.com/jcancelli/hot-reload/watcher"
 )
 
 type Config struct {
-	Server server.Config `json:"server"`
-	Watch  WatchConfig   `json:"watcher"`
+	Server  server.Config  `json:"server"`
+	Watcher watcher.Config `json:"watcher"`
 }
 
-type WatchConfig struct {
-	Directories []string            `json:"directories"`
-	Handlers    []FileHandlerConfig `json:"handlers"`
-}
-
-type FileHandlerConfig struct {
-	Pattern string   `json:"pattern"`
-	Command string   `json:"command"`
-	Args    []string `json:"args"`
-	Events  []string `json:"events"`
+func (self *Config) FillInDefaults() {
+	self.Server.FillInDefaults()
+	self.Watcher.FillInDefaults()
 }
 
 func LoadConfig(path string) (Config, error) {
