@@ -1,28 +1,34 @@
 {
 	"$schema": "https://raw.githubusercontent.com/jcancelli/hot-reload/refs/heads/master/config-schema.json",
-	"serve": {
+	"server": {
 		"port": 8080,
-		"directory": "",
-		"clientScriptRoute": "optional, defaults to /hot-reload.js",
-		"websocketRoute": "optional, defaults to /hot-reload-websocket"
+		"directory": "./out",
+		"clientScriptRoute": "/hot-reload.js",
+		"websocketRoute": "/hot-reload-websocket",
+		"pingIntervalMs": 10000
 	},
-	"watch": {
-		"directories": [
-			""
-		],
+	"watcher": {
+		"directories": ["./src"],
+		"pollIntervalMs": 1000,
 		"handlers": [
 			{
-				"pattern": "",
-				"command": "",
-				"args": [],
-				"events": [
-					"CREATE",
-					"WRITE",
-					"REMOVE",
-					"MOVE",
-					"RENAME",
-					"CHMOD"
-				]
+				"name": "example handler",
+				"command": [
+					"echo",
+					"absolute {{.FileAbs}} basename {{.FileBase}} directory {{.FileDir}}"
+				],
+				"extensions": [
+					"go",
+					"html",
+					"js",
+					"css"
+				],
+				"files": [
+					"/home/johndoe/code/my-project/src/my-special-file.txt"
+				],
+				"regex": "[Hh]ello[Ww]orld",
+				"printStdOut": true,
+				"printStdErr": true
 			}
 		]
 	}

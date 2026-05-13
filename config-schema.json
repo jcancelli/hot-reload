@@ -105,10 +105,7 @@
 						}
 					}
 				}
-			},
-			"required": [
-				"command"
-			]
+			}
 		}
 	},
 	"required": [
